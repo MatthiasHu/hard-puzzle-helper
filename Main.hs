@@ -1,3 +1,7 @@
+module Main where
+
+import FindCorners
+
 -- (using JuicyPixels)
 import Codec.Picture
 import qualified Data.Set as Set
@@ -6,17 +10,25 @@ import qualified Data.Set as Set
 main :: IO ()
 main = do
   Right img <- fmap (convertRGB8) <$> readImage "test.jpg"
-  saveBmpImage "out.bmp" (ImageRGB8 $ markCenterComponent img)
+  let w = imageWidth img
+      h = imageHeight img
+      component = fillInComponent img (w `div` 2, h `div` 2)
+      red = PixelRGB8 255 0 0
+      corners = findCorners $ boundary component
+      pixels = Set.fromList $ corners ++ foldMap neighbours corners
+      marked = replacePixels red img pixels
+  print corners
+  saveBmpImage "out.bmp" (ImageRGB8 marked)
 
-markCenterComponent :: Image PixelRGB8 -> Image PixelRGB8
-markCenterComponent img = generateImage generator w h
+boundary :: Set.Set (Int, Int) -> Set.Set (Int, Int)
+boundary s = Set.filter (any (`Set.notMember` s) . neighbours) s
+
+replacePixels :: (Pixel px) =>
+  px -> Image px -> Set.Set (Int, Int) -> Image px
+replacePixels p img s =
+  generateImage generator (imageWidth img) (imageHeight img)
   where
-    w = imageWidth img
-    h = imageHeight img
-    generator x y = let px = pixelAt img x y in
-      if (x, y) `Set.member` component then redden px else px
-    component = fillInComponent img (w `div` 2, h `div` 2)
-    redden (PixelRGB8 r g b) = PixelRGB8 255 g b
+    generator x y = if (x, y) `Set.member` s then p else pixelAt img x y
 
 fillInComponent :: Image PixelRGB8 -> (Int, Int) -> Set.Set (Int, Int)
 fillInComponent img start = go [start] Set.empty Set.empty
