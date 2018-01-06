@@ -11,15 +11,15 @@ findCorners boundary =
   map (\(guess, outside) ->
         elaborateCorner boundary guess outside searchRadiusSq
       ) $
-    [ ((l, t), (-1, -1))
-    , ((r, t), ( 1, -1))
-    , ((l, b), (-1,  1))
-    , ((r, b), ( 1,  1))
+    [ ((l, b), (-1, -1))
+    , ((r, b), ( 1, -1))
+    , ((l, t), (-1,  1))
+    , ((r, t), ( 1,  1))
     ]
   where
     boundaryList = Set.toList boundary
-    (t, b) = topBottomEdges boundaryList [ymin..ymax]
-    (l, r) = topBottomEdges (map flipPair boundaryList) [xmin..xmax]
+    (b, t) = bottomTopEdges boundaryList [ymin..ymax]
+    (l, r) = bottomTopEdges (map flipPair boundaryList) [xmin..xmax]
     flipPair (x, y) = (y, x)
     xmin = minimum . map fst $ boundaryList
     xmax = maximum . map fst $ boundaryList
@@ -29,17 +29,16 @@ findCorners boundary =
     height = ymax - ymin
     searchRadiusSq = (width*height) `div` (8^2)
     
-
-topBottomEdges :: [(Int, Int)] -> [Int] -> (Int, Int)
-topBottomEdges list ys = (top, bot)
+bottomTopEdges :: [(Int, Int)] -> [Int] -> (Int, Int)
+bottomTopEdges list ys = (bot, top)
   where
     xsAtY :: Int -> [Int]
     xsAtY y = map fst . filter ((==y) . snd) $ list
     widthAtY y  = maximum (xsAtY y) - minimum (xsAtY y)
     maxWidth  = maximum [ widthAtY y  | y <- ys ]
     wideYs = filter ((>=(maxWidth`div`2)) . widthAtY) ys
-    top = head wideYs
-    bot = last wideYs
+    bot = head wideYs
+    top = last wideYs
 
 elaborateCorner ::
   Set.Set (Int, Int) -> (Int, Int) -> (Int, Int) -> Int -> (Int, Int)

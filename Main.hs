@@ -1,58 +1,60 @@
 module Main where
 
+import Edge
 import FindCorners
+import ComponentSet
+import SquareGrid
 
 -- (using JuicyPixels)
 import Codec.Picture
 import qualified Data.Set as Set
+import Control.Monad
 
 
 main :: IO ()
 main = do
   Right img <- fmap (convertRGB8) <$> readImage "test.jpg"
-  let w = imageWidth img
-      h = imageHeight img
-      component = fillInComponent img (w `div` 2, h `div` 2)
-      red = PixelRGB8 255 0 0
-      corners = findCorners $ boundary component
-      pixels = Set.fromList $ corners ++ foldMap neighbours corners
-      marked = replacePixels red img pixels
-  print corners
-  saveBmpImage "out.bmp" (ImageRGB8 marked)
+  let (edges, corners) = edgesAndCornersFromImage img
+      cornersImg = replacePixels (PixelRGB8 255 0 0) img
+        (Set.fromList $ corners ++ concatMap neighbours [head corners])
+  saveBmpImage "corners.bmp" $ ImageRGB8 cornersImg
+  forM_ (zip edges [0..]) $ \(edge, i) ->
+    saveBmpImage ("edge-"++show i++".bmp")
+      (ImageRGB8 $ edge64ToImage edge)
 
-boundary :: Set.Set (Int, Int) -> Set.Set (Int, Int)
-boundary s = Set.filter (any (`Set.notMember` s) . neighbours) s
+edgesAndCornersFromImage :: Image PixelRGB8 -> ([Edge64], [(Int, Int)])
+edgesAndCornersFromImage img =
+  ( map (uncurry $ edgeFromSet component)
+      [ (lt, rt)
+      , (lb, lt)
+      , (rb, lb)
+      , (rt, rb)
+      ]
+  , corners
+  )
+  where
+    w = imageWidth img
+    h = imageHeight img
+    component = componentSet img isDark (w `div` 2, h `div` 2)
+    corners = findCorners $ boundary component
+    [lb, rb, lt, rt] = corners
+
+isDark :: PixelRGB8 -> Bool
+isDark (PixelRGB8 r g b) = (r `div` 3 + g `div` 3 + b `div` 3) < 64
+
+edgesFromImage :: Image PixelRGB8 -> [Edge64]
+edgesFromImage = fst . edgesAndCornersFromImage
 
 replacePixels :: (Pixel px) =>
   px -> Image px -> Set.Set (Int, Int) -> Image px
 replacePixels p img s =
   generateImage generator (imageWidth img) (imageHeight img)
   where
-    generator x y = if (x, y) `Set.member` s then p else pixelAt img x y
+    generator x y = if (x, -y) `Set.member` s then p else pixelAt img x y
 
-fillInComponent :: Image PixelRGB8 -> (Int, Int) -> Set.Set (Int, Int)
-fillInComponent img start = go [start] Set.empty Set.empty
+edge64ToImage :: Edge64 -> Image PixelRGB8
+edge64ToImage e = generateImage generator 64 64
   where
-    go [] inSet doneSet = inSet
-    go (work:workList) inSet doneSet =
-      if work `Set.member` doneSet
-      then go workList inSet doneSet
-      else if isIn img work
-        then go (neighbours work ++ workList) (Set.insert work inSet)
-               (Set.insert work doneSet)
-        else go workList inSet (Set.insert work doneSet)
-
-neighbours :: (Int, Int) -> [(Int, Int)]
-neighbours (x, y) =
-  [(x+1, y), (x-1, y), (x, y+1), (x, y-1)]
-
-isIn :: Image PixelRGB8 -> (Int, Int) -> Bool
-isIn img (x, y) = isInsideImage img (x, y) && isDark (pixelAt img x y)
-
-isInsideImage :: Image a -> (Int, Int) -> Bool
-isInsideImage img (x, y) =
-     x >= 0 && x < imageWidth  img
-  && y >= 0 && y < imageHeight img
-
-isDark :: PixelRGB8 -> Bool
-isDark (PixelRGB8 r g b) = (r `div` 3 + g `div` 3 + b `div` 3) < 64
+    generator x y = if edge64Pixel e (x, (63-y)) then up else down
+    up = PixelRGB8 255 255 255
+    down = PixelRGB8 0 0 0
