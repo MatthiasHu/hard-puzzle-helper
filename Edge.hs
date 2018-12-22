@@ -12,7 +12,9 @@ import SquareGrid
 import Data.Word
 import Data.Bits hiding (rotate)
 import qualified Data.Set as Set
+import Data.Binary
 import Data.Foldable
+import Control.Monad
 
 
 -- Coordinates in insideDown:
@@ -82,3 +84,9 @@ fittingBadness e1 e2 =
 -- (Retains mathematical coordinates: low y is bottom.)
 edge64Pixel :: Edge64 -> (Int, Int) -> Bool
 edge64Pixel (Edge64 iD _) (x, y) = testBit (iD !! x) y
+
+
+-- Use encode and decode from Data.Binary.
+instance Binary Edge64 where
+  put (Edge64 iD _) = mapM_ put iD
+  get = mkEdge64 <$> replicateM 64 get

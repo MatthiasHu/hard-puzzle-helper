@@ -7,6 +7,8 @@ import SquareGrid
 import Codec.Picture
 import System.FilePath
 import System.Directory
+import Data.Binary
+import qualified Data.ByteString.Lazy as BS
 import qualified Data.Set as Set
 import Control.Monad
 
@@ -38,10 +40,10 @@ imageToEdges imagePath edgesPath = do
       let
         es = edgesFromImage (convertRGB8 img)
         compass = ["north", "west", "south", "east"]
-        name dir = takeBaseName imagePath ++ "-" ++ dir
+        baseName = takeBaseName imagePath
+        name dir = baseName ++ "-" ++ dir
       forM_ (zip es compass) $ \(e, dir) ->
-        saveBmpImage (edgesPath </> name dir <.> "bmp")
-          (ImageRGB8 $ edge64ToImage e)
+        encodeFile (edgesPath </> name dir <.> ".edge64") e
 
 debugSingleImage :: FilePath -> IO ()
 debugSingleImage path = do
