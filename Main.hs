@@ -22,15 +22,32 @@ allImagesToEdges = do
     imagesPath = "input/images"
     edgesPath = "input/pieces"
     extension = ".jpg"
-  imagePaths <- filter ((==extension) . takeExtension) <$>
+  allImagePaths <- filter ((==extension) . takeExtension) <$>
     listDirectory imagesPath
   putStrLn $ unwords
-    [ "found", show (length imagePaths)
+    [ "found", show (length allImagePaths)
     , extension, "files in", imagesPath ]
+  imagePaths <- filterM
+    (fmap not . edgeFilesPresent edgesPath . takeBaseName)
+    allImagePaths
+  putStrLn $ unwords
+    [ "of which", show (length imagePaths)
+    , "lack edges files in", edgesPath ]
   putStrLn $ unwords ["saving edges to", edgesPath, "..."]
   forM_ imagePaths $ \path -> do
     putStrLn path
     imageToEdges (imagesPath </> path) edgesPath
+
+edgeFilesPresent :: FilePath -> String -> IO Bool
+edgeFilesPresent edgesPath baseName = all (==True) <$>
+  mapM doesFileExist (edgeFilePaths edgesPath baseName)
+
+edgeFilePaths :: FilePath -> String -> [String]
+edgeFilePaths edgesPath baseName =
+  [ edgesPath </> (baseName ++ "-" ++ dir) <.> ".edge64"
+  | dir <- compass ]
+  where
+    compass = ["north", "west", "south", "east"]
 
 imageToEdges :: FilePath -> FilePath -> IO ()
 imageToEdges imagePath edgesPath = do
@@ -39,11 +56,9 @@ imageToEdges imagePath edgesPath = do
     Right img -> do
       let
         es = edgesFromImage (convertRGB8 img)
-        compass = ["north", "west", "south", "east"]
         baseName = takeBaseName imagePath
-        name dir = baseName ++ "-" ++ dir
-      forM_ (zip es compass) $ \(e, dir) ->
-        encodeFile (edgesPath </> name dir <.> ".edge64") e
+      forM_ (zip es (edgeFilePaths edgesPath baseName)) $ \(e, file) ->
+        encodeFile file e
 
 debugSingleImage :: FilePath -> IO ()
 debugSingleImage path = do
