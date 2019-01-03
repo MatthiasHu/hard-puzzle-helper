@@ -1,1 +1,1 @@
-ghc -outputdir out -o Main -isrc Main.hs
+ghc -outputdir ghc-out -o Main -isrc src/Main.hs
