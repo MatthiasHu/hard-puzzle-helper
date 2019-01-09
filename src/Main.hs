@@ -10,6 +10,7 @@ import System.Directory
 import Data.Binary
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Set as Set
+import Data.List
 import Control.Monad
 
 
@@ -21,20 +22,28 @@ allImagesToEdges = do
   let
     imagesPath = "input/images"
     edgesPath = "input/pieces"
-    extension = ".jpg"
-  allImagePaths <- filter ((==extension) . takeExtension) <$>
-    listDirectory imagesPath
+    imagesExtension = ".jpg"
+  imageNames <- getImageNames imagesExtension imagesPath
   putStrLn $ unwords
-    [ "found", show (length allImagePaths)
-    , extension, "files in", imagesPath ]
-  imagePaths <- filterM
+    [ "found", show (length imageNames)
+    , imagesExtension, "files in", imagesPath ]
+  generateMissingEdgeFiles imagesPath edgesPath imageNames
+
+getImageNames :: String -> FilePath -> IO [FilePath]
+getImageNames extension imagesPath =
+  (sort . filter ((==extension) . takeExtension)) <$>
+  listDirectory imagesPath
+
+generateMissingEdgeFiles :: FilePath -> FilePath -> [FilePath] -> IO ()
+generateMissingEdgeFiles imagesPath edgesPath allImageNames = do
+  imageNames <- filterM
     (fmap not . edgeFilesPresent edgesPath . takeBaseName)
-    allImagePaths
+    allImageNames
   putStrLn $ unwords
-    [ "of which", show (length imagePaths)
-    , "lack edges files in", edgesPath ]
+    [ show (length imageNames)
+    , "images lack edges files in", edgesPath ]
   putStrLn $ unwords ["saving edges to", edgesPath, "..."]
-  forM_ imagePaths $ \path -> do
+  forM_ imageNames $ \path -> do
     putStrLn path
     imageToEdges (imagesPath </> path) edgesPath
 
