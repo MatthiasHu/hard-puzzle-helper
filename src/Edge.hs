@@ -2,7 +2,7 @@ module Edge
   ( Edge64()
   , mkEdge64
   , edgeFromSet
-  , fittingBadness
+  , matchingCost
   , edge64Pixel
   ) where
 
@@ -76,8 +76,8 @@ edgeFromSet insideSet (x1, y1) (x2, y2) = generateEdge64 f
     f x y = let (xp, yp) = toPixels x y
             in (round xp, round yp) `Set.member` insideSet
 
-fittingBadness :: Edge64 -> Edge64 -> Int
-fittingBadness e1 e2 =
+matchingCost :: Edge64 -> Edge64 -> Int
+matchingCost e1 e2 =
   sum [ popCount . complement $ xor r1 r2
       | (r1, r2) <- zip (insideDown e1) (insideUp e2) ]
 

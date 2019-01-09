@@ -8,18 +8,20 @@ import FindCorners
 import ComponentSet
 import Edge
 import SquareGrid
+import Directions
 
 import Codec.Picture
 
 
-edgesAndCornersFromImage :: Image PixelRGB8 -> ([Edge64], [(Int, Int)])
+edgesAndCornersFromImage :: Image PixelRGB8 -> (Directions Edge64, [(Int, Int)])
 edgesAndCornersFromImage img =
-  ( map (uncurry $ edgeFromSet component)
-      [ (lt, rt)
-      , (lb, lt)
-      , (rb, lb)
-      , (rt, rb)
-      ]
+  ( fmap (uncurry $ edgeFromSet component) $ directionsFromFunction
+      ( \dir -> case dir of
+        East -> (rt, rb)
+        North -> (lt, rt)
+        West -> (lb, lt)
+        South -> (rb, lb)
+      )
   , corners
   )
   where
@@ -32,7 +34,7 @@ edgesAndCornersFromImage img =
 isDark :: PixelRGB8 -> Bool
 isDark (PixelRGB8 r g b) = (r `div` 3 + g `div` 3 + b `div` 3) < 64
 
-edgesFromImage :: Image PixelRGB8 -> [Edge64]
+edgesFromImage :: Image PixelRGB8 -> Directions Edge64
 edgesFromImage = fst . edgesAndCornersFromImage
 
 edge64ToImage :: Edge64 -> Image PixelRGB8
