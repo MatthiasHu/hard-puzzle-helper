@@ -21,20 +21,39 @@ import Control.Applicative
 
 
 main :: IO ()
-main = allImagesToEdges
-
-allImagesToEdges :: IO ()
-allImagesToEdges = do
+main = do
   let
     imagesPath = "input/images"
     edgesPath = "input/pieces"
+  imageNames <- allImagesToEdges imagesPath edgesPath
+  matchingData <- loadPieces edgesPath imageNames
+  printEdgeMatchingsStatistic matchingData
+  printBestEdgeMatchings matchingData
+
+allImagesToEdges :: FilePath -> FilePath -> IO [String]
+allImagesToEdges imagesPath edgesPath = do
+  let
     imagesExtension = ".jpg"
   imageNames <- getImageNames imagesExtension imagesPath
   putStrLn $ unwords
     [ "found", show (length imageNames)
     , imagesExtension, "files in", imagesPath ]
   generateMissingEdgeFiles imagesPath edgesPath imageNames
-  matchingData <- loadPieces edgesPath imageNames
+  return imageNames
+
+printEdgeMatchingsStatistic :: MatchingData -> IO ()
+printEdgeMatchingsStatistic md = do
+  putStrLn "statistic of edge matching costs:"
+  mapM_ (\(cost, count) ->
+    putStrLn (replicate (count `div` c) '#'
+      ++ " " ++ show cost ++ ": " ++ show count))
+    (edgeMatchingsStatistic md 20)
+  where
+    c = ((n*n*8) `div` 1000) + 1
+    n = length md
+
+printBestEdgeMatchings :: MatchingData -> IO ()
+printBestEdgeMatchings matchingData = do
   putStrLn "best edge matchings:"
   mapM_ print (take 100 $ bestEdgeMatchings matchingData)
 
@@ -60,7 +79,7 @@ edgeFilesPresent :: FilePath -> String -> IO Bool
 edgeFilesPresent edgesPath baseName = all (==True) <$>
   mapM doesFileExist (edgeFilePaths edgesPath baseName)
 
-loadPieces :: FilePath -> [String] -> IO (V.Vector Piece)
+loadPieces :: FilePath -> [String] -> IO MatchingData
 loadPieces edgesPath imageNames = do
   putStrLn $ unwords ["loading pieces from", edgesPath, "..."]
   V.fromList <$> mapM (loadPiece edgesPath . takeBaseName) imageNames
