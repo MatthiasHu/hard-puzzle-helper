@@ -1,6 +1,8 @@
 module Directions
   ( Direction(..)
   , allDirections
+  , oppositeDirection
+  , move
   , Directions(..)
   , directionsFromFunction
   , direction
@@ -13,6 +15,18 @@ data Direction = East | North | West | South
   deriving (Show)
 
 allDirections = [East, North, West, South]
+
+oppositeDirection :: Direction -> Direction
+oppositeDirection East  = West
+oppositeDirection North = South
+oppositeDirection West  = East
+oppositeDirection South = North
+
+move :: Direction -> (Int, Int) -> (Int, Int)
+move East  (x, y) = (x+1, y  )
+move North (x, y) = (x  , y+1)
+move West  (x, y) = (x-1, y  )
+move South (x, y) = (x  , y-1)
 
 data Directions a = Directions
   { east  :: a

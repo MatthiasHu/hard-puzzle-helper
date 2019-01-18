@@ -2,6 +2,7 @@ module MatchingData
   ( PieceId
   , EdgeId
   , MatchingData
+  , getPiece
   , getEdge
   , edgeMatchingCost
   , allEdgeMatchings
@@ -16,12 +17,15 @@ import qualified Data.Vector as V
 
 type PieceId = Int
 
-type EdgeId = (Int, Direction)
+type EdgeId = (PieceId, Direction)
 
 type MatchingData = V.Vector Piece
 
+getPiece :: MatchingData -> PieceId -> Piece
+getPiece md pieceId = md V.! pieceId
+
 getEdge :: MatchingData -> EdgeId -> Edge64
-getEdge md (pieceId, dir) = direction dir (md V.! pieceId)
+getEdge md (pieceId, dir) = direction dir (getPiece md pieceId)
 
 edgeMatchingCost :: MatchingData -> (EdgeId, EdgeId) -> Int
 edgeMatchingCost md (a, b) = matchingCost (getEdge md a) (getEdge md b)

@@ -1,7 +1,8 @@
 module Rotation
   ( Rotation
-  , invertRotation
   , mkRotation
+  , allRotations
+  , invertRotation
   , rotateDirLeft
   , rotateDir
   , rotate
@@ -14,6 +15,9 @@ newtype Rotation = Rotation Int
 
 mkRotation :: Int -> Rotation
 mkRotation n = Rotation (n `mod` 4)
+
+allRotations :: [Rotation]
+allRotations = map mkRotation [0..3]
 
 instance Semigroup Rotation where
   Rotation a <> Rotation b = mkRotation (a+b)
