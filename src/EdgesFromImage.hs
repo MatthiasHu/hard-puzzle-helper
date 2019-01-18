@@ -28,7 +28,7 @@ edgesAndCornersFromImage img =
     w = imageWidth img
     h = imageHeight img
     component = componentSet img isDark (w `div` 2, h `div` 2)
-    corners = findCorners $ boundary component
+    corners = findCorners $ boundaryMembers component
     [lb, rb, lt, rt] = corners
 
 isDark :: PixelRGB8 -> Bool

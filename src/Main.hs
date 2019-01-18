@@ -1,5 +1,6 @@
 module Main where
 
+import Cluster
 import Matching
 import EdgesFromImage
 import Piece
@@ -29,6 +30,14 @@ main = do
   matchingData <- loadPieces edgesPath imageNames
   printEdgeMatchingsStatistic matchingData
   printBestEdgeMatchings matchingData
+  showGrowth matchingData (onePieceCluster matchingData 555)
+
+showGrowth :: MatchingData -> Cluster -> IO ()
+showGrowth md c = do
+  putStrLn ""
+  putStrLn (showCluster c)
+  putStrLn "----------"
+  showGrowth md (greedyGrowth md c)
 
 allImagesToEdges :: FilePath -> FilePath -> IO [String]
 allImagesToEdges imagesPath edgesPath = do
