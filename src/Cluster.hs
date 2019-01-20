@@ -5,8 +5,11 @@ module Cluster
   , emptyCluster
   , addPiece
   , onePieceCluster
-  , greedyGrowth
   , showCluster
+  , unusedRotatedPieces
+  , allPossibleAdditions
+  , totalAdditionCost
+  , avgAdditionCost
   ) where
 
 import MatchingData
@@ -19,7 +22,6 @@ import SquareGrid
 import qualified Data.Set as S
 import qualified Data.Map.Strict as M
 import Data.Maybe
-import Data.Ord
 import Data.List
 
 
@@ -47,48 +49,6 @@ onePieceCluster :: MatchingData -> PieceId -> Cluster
 onePieceCluster md p =
   addPiece (0, 0) (p, mkRotation 0) (emptyCluster md)
 
-getClusterPiece ::
-  MatchingData -> Cluster -> Position -> Maybe Piece
-getClusterPiece md c pos =
-  case pieces c M.!? pos of
-    Nothing -> Nothing
-    Just (p, r) -> Just $ rotate r (getPiece md p)
-
-neighbouringPositions :: Cluster -> S.Set Position
-neighbouringPositions c = boundaryNonMembers $ M.keysSet (pieces c)
-
-allPossibleAdditions ::
-  MatchingData -> Cluster -> [(Position, RotatedPiece)]
-allPossibleAdditions md c =
-  [ (pos, (p, r))
-  | pos <- S.toList (neighbouringPositions c)
-  , p <- S.toList (unusedPieces c)
-  , r <- allRotations ]
-
-clusterEdgeCost ::
-  MatchingData -> Cluster -> Position -> Direction -> Maybe Int
-clusterEdgeCost md c pos dir = matchingCost
-  <$> (direction dir  <$> getClusterPiece md c pos )
-  <*> (direction dir' <$> getClusterPiece md c pos')
-  where
-    pos' = move dir pos
-    dir' = oppositeDirection dir
-
-avgAdditionCost ::
-  MatchingData -> Cluster -> Position -> RotatedPiece -> Float
-avgAdditionCost md c pos rp = avg . catMaybes $
-  [ clusterEdgeCost md c' pos dir | dir <- allDirections ]
-  where
-    c' = addPiece pos rp c
-    avg l = fromIntegral (sum l) / fromIntegral (length l)
-
--- | Grow cluster by one piece, greedily.
-greedyGrowth :: MatchingData -> Cluster -> Cluster
-greedyGrowth md c = addPiece pos rp c
-  where
-    (pos, rp) = minimumBy (comparing $ uncurry (avgAdditionCost md c))
-      (allPossibleAdditions md c)
-
 showCluster :: Cluster -> String
 showCluster c
   | M.null ps  = "(empty cluster)"
@@ -105,3 +65,52 @@ showCluster c
     ys = map snd (M.keys ps)
     fourDigit = reverse . take 4 . (++repeat '0') . reverse . show
     ps = pieces c
+
+getClusterPiece ::
+  MatchingData -> Cluster -> Position -> Maybe Piece
+getClusterPiece md c pos =
+  case pieces c M.!? pos of
+    Nothing -> Nothing
+    Just (p, r) -> Just $ rotate r (getPiece md p)
+
+neighbouringPositions :: Cluster -> S.Set Position
+neighbouringPositions c = boundaryNonMembers $ M.keysSet (pieces c)
+
+unusedRotatedPieces :: Cluster -> [RotatedPiece]
+unusedRotatedPieces c =
+  [ (p, r)
+  | p <- S.toList (unusedPieces c)
+  , r <- allRotations ]
+
+allPossibleAdditions ::
+  MatchingData -> Cluster -> [(Position, RotatedPiece)]
+allPossibleAdditions md c =
+  [ (pos, rp)
+  | pos <- S.toList (neighbouringPositions c)
+  , rp <- unusedRotatedPieces c ]
+
+clusterEdgeCost ::
+  MatchingData -> Cluster -> Position -> Direction -> Maybe Int
+clusterEdgeCost md c pos dir = matchingCost
+  <$> (direction dir  <$> getClusterPiece md c pos )
+  <*> (direction dir' <$> getClusterPiece md c pos')
+  where
+    pos' = move dir pos
+    dir' = oppositeDirection dir
+
+additionCosts ::
+  MatchingData -> Cluster -> Position -> RotatedPiece -> [Int]
+additionCosts md c pos rp = catMaybes $
+  [ clusterEdgeCost md c' pos dir | dir <- allDirections ]
+  where
+    c' = addPiece pos rp c
+
+totalAdditionCost ::
+  MatchingData -> Cluster -> Position -> RotatedPiece -> Int
+totalAdditionCost md c pos rp = sum (additionCosts md c pos rp)
+
+avgAdditionCost ::
+  MatchingData -> Cluster -> Position -> RotatedPiece -> Float
+avgAdditionCost md c pos rp = avg (additionCosts md c pos rp)
+  where
+    avg l = fromIntegral (sum l) / fromIntegral (length l)

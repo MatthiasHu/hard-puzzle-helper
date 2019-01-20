@@ -28,9 +28,12 @@ main = do
     edgesPath = "input/pieces"
   imageNames <- allImagesToEdges imagesPath edgesPath
   matchingData <- loadPieces edgesPath imageNames
-  printEdgeMatchingsStatistic matchingData
-  printBestEdgeMatchings matchingData
-  showGrowth matchingData (onePieceCluster matchingData 555)
+--  printEdgeMatchingsStatistic matchingData
+--  printBestEdgeMatchings matchingData
+  let quad = fillPositions matchingData
+               (onePieceCluster matchingData 333)
+               [(0, 1), (1, 0), (1, 1)]
+  showGrowth matchingData quad
 
 showGrowth :: MatchingData -> Cluster -> IO ()
 showGrowth md c = do
