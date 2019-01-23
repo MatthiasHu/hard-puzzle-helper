@@ -27,13 +27,14 @@ main = do
     imagesPath = "input/images"
     edgesPath = "input/pieces"
   imageNames <- allImagesToEdges imagesPath edgesPath
-  matchingData <- loadPieces edgesPath imageNames
---  printEdgeMatchingsStatistic matchingData
---  printBestEdgeMatchings matchingData
-  let quad = fillPositions matchingData
-               (onePieceCluster matchingData 333)
-               [(0, 1), (1, 0), (1, 1)]
-  showGrowth matchingData quad
+  md <- loadPieces edgesPath imageNames
+--  printEdgeMatchingsStatistic md
+--  printBestEdgeMatchings md
+  let quadPositions = [(0, 0), (0, 1), (1, 0), (1, 1)]
+      e = emptyCluster md
+      l = bestMultiAdditionCandidates md e 1000 quadPositions
+  putStrLn "advancing candidates for best quad (with total costs):"
+  mapM_ print l
 
 showGrowth :: MatchingData -> Cluster -> IO ()
 showGrowth md c = do

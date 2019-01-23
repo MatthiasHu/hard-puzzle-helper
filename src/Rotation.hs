@@ -12,6 +12,7 @@ import Directions
 
 
 newtype Rotation = Rotation Int
+  deriving (Show)
 
 mkRotation :: Int -> Rotation
 mkRotation n = Rotation (n `mod` 4)

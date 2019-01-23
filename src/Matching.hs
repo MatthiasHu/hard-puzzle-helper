@@ -3,12 +3,14 @@ module Matching
   , edgeMatchingsStatistic
   , bestEdgeMatchings
   , greedyGrowth
+  , bestMultiAdditionCandidates
   , fillPositions
   , bestQuad
   ) where
 
 import Cluster
 import MatchingData
+import CostTree
 import Statistic
 
 import qualified Data.Vector as V
@@ -28,38 +30,41 @@ bestEdgeMatchings md =
 
 -- | Grow cluster by one piece, greedily.
 greedyGrowth :: MatchingData -> Cluster -> Cluster
-greedyGrowth md c = addPiece pos rp c
+greedyGrowth md c = addPiece addition c
   where
-    (pos, rp) = minimumBy (comparing $ uncurry (avgAdditionCost md c))
+    addition = minimumBy (comparing $ avgAdditionCost md c)
       (allPossibleAdditions md c)
+
+multiAdditionsTree ::
+  MatchingData -> Cluster -> [Position] -> Tree (Int, Addition)
+multiAdditionsTree md c [] = Leaf
+multiAdditionsTree md c (pos:rest) =
+  Fork [ ( (totalAdditionCost md c a, a)
+         , multiAdditionsTree md (addPiece a c) rest )
+       | a <- [ (pos, rp) | rp <- unusedRotatedPieces c ] ]
+
+bestMultiAdditionCandidates ::
+  MatchingData -> Cluster -> Int -> [Position] -> [(Int, [Addition])]
+bestMultiAdditionCandidates md c bound poss =
+  cheapestPathCandidates (multiAdditionsTree md c poss) bound
 
 -- | Find additions with minimal total cost filling the given positions.
 -- Abort search when reaching given bound on total cost.
 bestMultiAddition ::
   MatchingData -> Cluster -> Int -> [Position] ->
-  Maybe ([(Position, RotatedPiece)], Int)
-bestMultiAddition md c bound [] = Just ([], 0)
-bestMultiAddition md c bound (pos:rest) =
-  fstMaybe $ foldl updateOptimum (Nothing, bound) candidates
+  Maybe (Int, [Addition])
+bestMultiAddition md c bound poss =
+  mLast $ bestMultiAdditionCandidates md c bound poss
   where
-    candidates = sortOn snd . filter ((<bound) . snd) $
-      [ (rp, totalAdditionCost md c pos rp)
-      | rp <- unusedRotatedPieces c ]
-    fstMaybe (Nothing, _) = Nothing
-    fstMaybe (Just a, b) = Just (a, b)
-    updateOptimum (x, costOfX) (rp, cost) =
-      let c' = addPiece pos rp c
-          bound' = costOfX - cost
-      in case bestMultiAddition md c' bound' rest of
-        Nothing           -> (x, costOfX)
-        Just (y, costOfY) -> (Just ((pos, rp) : y), cost + costOfY)
+    mLast [] = Nothing
+    mLast l = Just (last l)
 
 fillPositions :: MatchingData -> Cluster -> [Position] -> Cluster
 fillPositions md c positions =
-  foldl (flip (uncurry addPiece)) c additions
+  foldl (flip addPiece) c additions
   where
-    Just (additions, _) = bestMultiAddition md c highBound positions
-    highBound = 10^5
+    Just (_ , additions) = bestMultiAddition md c highBound positions
+    highBound = 50 -- 10^5
 
 bestQuad :: MatchingData -> Cluster
 bestQuad md = fillPositions md (emptyCluster md)

@@ -1,6 +1,7 @@
 module Cluster
   ( Position
   , RotatedPiece
+  , Addition
   , Cluster
   , emptyCluster
   , addPiece
@@ -27,6 +28,7 @@ import Data.List
 
 type Position = (Int, Int)
 type RotatedPiece = (PieceId, Rotation)
+type Addition = (Position, RotatedPiece)
 
 data Cluster = Cluster
   { pieces       :: M.Map Position RotatedPiece
@@ -36,8 +38,8 @@ data Cluster = Cluster
 emptyCluster :: MatchingData -> Cluster
 emptyCluster md = Cluster M.empty (S.fromList [0..length md -1])
 
-addPiece :: Position -> RotatedPiece -> Cluster -> Cluster
-addPiece pos rp@(p, _) c
+addPiece :: Addition -> Cluster -> Cluster
+addPiece (pos, rp@(p, _)) c
   | pos `M.member` (pieces c)  =
     error $ unwords ["addPiece: position", show pos, "is occupied"]
   | otherwise  = Cluster
@@ -47,7 +49,7 @@ addPiece pos rp@(p, _) c
 
 onePieceCluster :: MatchingData -> PieceId -> Cluster
 onePieceCluster md p =
-  addPiece (0, 0) (p, mkRotation 0) (emptyCluster md)
+  addPiece ((0, 0), (p, mkRotation 0)) (emptyCluster md)
 
 showCluster :: Cluster -> String
 showCluster c
@@ -82,8 +84,7 @@ unusedRotatedPieces c =
   | p <- S.toList (unusedPieces c)
   , r <- allRotations ]
 
-allPossibleAdditions ::
-  MatchingData -> Cluster -> [(Position, RotatedPiece)]
+allPossibleAdditions :: MatchingData -> Cluster -> [Addition]
 allPossibleAdditions md c =
   [ (pos, rp)
   | pos <- S.toList (neighbouringPositions c)
@@ -98,19 +99,16 @@ clusterEdgeCost md c pos dir = matchingCost
     pos' = move dir pos
     dir' = oppositeDirection dir
 
-additionCosts ::
-  MatchingData -> Cluster -> Position -> RotatedPiece -> [Int]
-additionCosts md c pos rp = catMaybes $
+additionCosts :: MatchingData -> Cluster -> Addition -> [Int]
+additionCosts md c a@(pos, _) = catMaybes $
   [ clusterEdgeCost md c' pos dir | dir <- allDirections ]
   where
-    c' = addPiece pos rp c
+    c' = addPiece a c
 
-totalAdditionCost ::
-  MatchingData -> Cluster -> Position -> RotatedPiece -> Int
-totalAdditionCost md c pos rp = sum (additionCosts md c pos rp)
+totalAdditionCost :: MatchingData -> Cluster -> Addition -> Int
+totalAdditionCost md c a = sum (additionCosts md c a)
 
-avgAdditionCost ::
-  MatchingData -> Cluster -> Position -> RotatedPiece -> Float
-avgAdditionCost md c pos rp = avg (additionCosts md c pos rp)
+avgAdditionCost :: MatchingData -> Cluster -> Addition -> Float
+avgAdditionCost md c a = avg (additionCosts md c a)
   where
     avg l = fromIntegral (sum l) / fromIntegral (length l)
