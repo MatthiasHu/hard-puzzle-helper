@@ -3,16 +3,12 @@ module Matching
   , edgeMatchingsStatistic
   , bestEdgeMatchings
   , greedyGrowth
-  , bestMultiAdditionCandidates
+  , bestMultiAdditions
   , bestMultiAddition
-  , bestMultiAdditionDijkstra
-  , fillPositions
-  , bestQuad
   ) where
 
 import Cluster
 import MatchingData
-import CostTree
 import Statistic
 
 import qualified Data.Vector as V
@@ -37,43 +33,55 @@ greedyGrowth md c = addPiece addition c
     addition = minimumBy (comparing $ avgAdditionCost md c)
       (allPossibleAdditions md c)
 
-multiAdditionsTree ::
-  MatchingData -> Cluster -> [Position] -> Tree (Int, Addition)
-multiAdditionsTree md c [] = Leaf
-multiAdditionsTree md c (pos:rest) =
-  Fork [ ( (totalAdditionCost md c a, a)
-         , multiAdditionsTree md (addPiece a c) rest )
-       | a <- [ (pos, rp) | rp <- unusedRotatedPieces c ] ]
 
-bestMultiAdditionCandidates ::
+-- | List all multiadditions satisfying the given bound on total cost.
+bestMultiAdditions ::
   MatchingData -> Cluster -> Int -> [Position] -> [(Int, [Addition])]
-bestMultiAdditionCandidates md c bound poss =
-  cheapestPathCandidates (multiAdditionsTree md c poss) bound
+bestMultiAdditions md c costBound poss =
+  searchCandidatesLists md costBound (map mkCandidatesList poss)
+  where
+    mkCandidatesList pos =
+      ( pos
+      , filter ((< costBound) . fst)
+          [ (totalAdditionCost md c (pos, rp), rp)
+          | rp <- unusedRotatedPieces c ]
+      )
 
--- | Find additions with minimal total cost filling the given positions.
--- Abort search when reaching given bound on total cost.
+type CandidatesLists = [(Position, [(Int, RotatedPiece)])]
+
+searchCandidatesLists ::
+  MatchingData -> Int -> CandidatesLists -> [(Int, [Addition])]
+searchCandidatesLists md costBound [] = [(0, [])]
+searchCandidatesLists md costBound ((pos, candidates):cls) =
+  concatMap (choosingCandidate md costBound cls)
+    [ (pos, c) | c <- candidates ]
+
+choosingCandidate ::
+  MatchingData -> Int -> CandidatesLists ->
+  (Position, (Int, RotatedPiece)) -> [(Int, [Addition])]
+choosingCandidate md oldCostBound cls (thisPos, (thisCost, thisRp)) =
+  map augmentResult $
+    searchCandidatesLists md newCostBound (map updateCandidatesList cls)
+  where
+    newCostBound = oldCostBound - thisCost
+    augmentResult (totalCost, additions) =
+      ( totalCost + thisCost
+      , (thisPos, thisRp) : additions )
+    -- TODO: prohibit multiadditions using the same piece twice
+    updateCandidatesList (pos', l) =
+      ( pos'
+      ,   filterCandidates
+        . map (increaseCost pos')
+        . filterCandidates
+        $ l )
+    filterCandidates = filter ((< newCostBound) . fst)
+    increaseCost pos' (priorCost, rp') =
+      (priorCost + totalAdditionCost md cluster (pos', rp'), rp')
+    cluster = addPiece (thisPos, thisRp) (emptyCluster md)
+
 bestMultiAddition ::
-  MatchingData -> Cluster -> Int -> [Position] ->
-  Maybe (Int, [Addition])
-bestMultiAddition md c bound poss =
-  mLast $ bestMultiAdditionCandidates md c bound poss
-  where
-    mLast [] = Nothing
-    mLast l = Just (last l)
-
-bestMultiAdditionDijkstra ::
-  MatchingData -> Cluster -> Int -> [Position] ->
-  (Int, [Addition])
-bestMultiAdditionDijkstra md c bound poss =
-  cheapestPathDijkstra' (multiAdditionsTree md c poss) bound
-
-fillPositions :: MatchingData -> Cluster -> [Position] -> Cluster
-fillPositions md c positions =
-  foldl (flip addPiece) c additions
-  where
-    Just (_ , additions) = bestMultiAddition md c highBound positions
-    highBound = 50 -- 10^5
-
-bestQuad :: MatchingData -> Cluster
-bestQuad md = fillPositions md (emptyCluster md)
-  [(0, 0), (0, 1), (1, 0), (1, 1)]
+  MatchingData -> Cluster -> Int -> [Position] -> Maybe [Addition]
+bestMultiAddition md c costBound poss =
+  case bestMultiAdditions md c costBound poss of
+    [] -> Nothing
+    l -> Just (snd $ maximumBy (comparing fst) l)

@@ -18,6 +18,7 @@ import qualified Data.Vector as V
 import Data.List
 import Data.Foldable
 import Data.Char
+import Data.Ord
 import Control.Monad
 import Control.Applicative
 
@@ -32,20 +33,20 @@ main = do
 --  printEdgeMatchingsStatistic md
 --  printBestEdgeMatchings md
   let quadPositions = [(0, 0), (0, 1), (1, 0), (1, 1)]
-      otherPositions = [(0, 1), (1, 1)]
+      threePositions = [(0, 1), (1, 0), (1, 1)]
+      twoPositions = [(0, 1), (1, 1)]
       c0 = emptyCluster md
-      c1 = foldr addPiece c0
+      c1 = addPiece ((0, 0), (382, mkRotation 0)) c0
+      c2 = foldr addPiece c0
              [ ((0, 0), (382, mkRotation 0))
              , ((1, 0), (432, mkRotation 0)) ]
-      bound = 200
-{-
-      l = bestMultiAdditionCandidates md e bound quadPositions
-  putStrLn "advancing candidates for best quad (with total costs):"
+      bound = 120
+      l = bestMultiAdditions md c1 bound threePositions
+  putStrLn $ concat ["searching multiadditions with total cost below ", show bound, "..."]
   mapM_ print l
--}
-  putStrLn "computing something using Dijkstra style search:"
-  putStrLn $ concat ["(bound = ", show bound, ")"]
-  print $ bestMultiAdditionDijkstra md c1 bound otherPositions
+  putStrLn $ concat ["found ", show (length l), " in total."]
+  putStrLn "best one:"
+  print (minimumBy (comparing fst) l)
 
 showGrowth :: MatchingData -> Cluster -> IO ()
 showGrowth md c = do
