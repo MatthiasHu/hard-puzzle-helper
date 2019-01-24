@@ -4,6 +4,7 @@ import Cluster
 import Matching
 import EdgesFromImage
 import Piece
+import Rotation
 import Directions
 import SquareGrid
 
@@ -31,10 +32,20 @@ main = do
 --  printEdgeMatchingsStatistic md
 --  printBestEdgeMatchings md
   let quadPositions = [(0, 0), (0, 1), (1, 0), (1, 1)]
-      e = emptyCluster md
-      l = bestMultiAdditionCandidates md e 1000 quadPositions
+      otherPositions = [(0, 1), (1, 1)]
+      c0 = emptyCluster md
+      c1 = foldr addPiece c0
+             [ ((0, 0), (382, mkRotation 0))
+             , ((1, 0), (432, mkRotation 0)) ]
+      bound = 200
+{-
+      l = bestMultiAdditionCandidates md e bound quadPositions
   putStrLn "advancing candidates for best quad (with total costs):"
   mapM_ print l
+-}
+  putStrLn "computing something using Dijkstra style search:"
+  putStrLn $ concat ["(bound = ", show bound, ")"]
+  print $ bestMultiAdditionDijkstra md c1 bound otherPositions
 
 showGrowth :: MatchingData -> Cluster -> IO ()
 showGrowth md c = do

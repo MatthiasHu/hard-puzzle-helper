@@ -4,6 +4,8 @@ module Matching
   , bestEdgeMatchings
   , greedyGrowth
   , bestMultiAdditionCandidates
+  , bestMultiAddition
+  , bestMultiAdditionDijkstra
   , fillPositions
   , bestQuad
   ) where
@@ -58,6 +60,12 @@ bestMultiAddition md c bound poss =
   where
     mLast [] = Nothing
     mLast l = Just (last l)
+
+bestMultiAdditionDijkstra ::
+  MatchingData -> Cluster -> Int -> [Position] ->
+  (Int, [Addition])
+bestMultiAdditionDijkstra md c bound poss =
+  cheapestPathDijkstra' (multiAdditionsTree md c poss) bound
 
 fillPositions :: MatchingData -> Cluster -> [Position] -> Cluster
 fillPositions md c positions =
