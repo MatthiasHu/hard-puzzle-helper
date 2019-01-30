@@ -1,5 +1,6 @@
 module Matching
-  ( MatchingData
+  ( Cost
+  , MatchingData
   , edgeMatchingsStatistic
   , bestEdgeMatchings
   , greedyGrowth
@@ -19,7 +20,7 @@ import Data.Ord
 edgeMatchingsStatistic :: MatchingData -> Int -> [Position]
 edgeMatchingsStatistic md step =
     statistic
-  . map ((*step) . (`div` step) . edgeMatchingCost md)
+  . map ((*step) . (`div` step) . rawEdgeMatchingCost md)
   $ allEdgeMatchings md
 
 bestEdgeMatchings :: MatchingData -> [(EdgeId, EdgeId)]
@@ -33,10 +34,9 @@ greedyGrowth md c = addPiece addition c
     addition = minimumBy (comparing $ avgAdditionCost md c)
       (allPossibleAdditions md c)
 
-
 -- | List all multiadditions satisfying the given bound on total cost.
 bestMultiAdditions ::
-  MatchingData -> Cluster -> Int -> [Position] -> [(Int, [Addition])]
+  MatchingData -> Cluster -> Cost -> [Position] -> [(Cost, [Addition])]
 bestMultiAdditions md c costBound poss =
   searchCandidatesLists md costBound (map mkCandidatesList poss)
   where
@@ -47,18 +47,18 @@ bestMultiAdditions md c costBound poss =
           | rp <- unusedRotatedPieces c ]
       )
 
-type CandidatesLists = [(Position, [(Int, RotatedPiece)])]
+type CandidatesLists = [(Position, [(Cost, RotatedPiece)])]
 
 searchCandidatesLists ::
-  MatchingData -> Int -> CandidatesLists -> [(Int, [Addition])]
+  MatchingData -> Cost -> CandidatesLists -> [(Cost, [Addition])]
 searchCandidatesLists md costBound [] = [(0, [])]
 searchCandidatesLists md costBound ((pos, candidates):cls) =
   concatMap (choosingCandidate md costBound cls)
     [ (pos, c) | c <- candidates ]
 
 choosingCandidate ::
-  MatchingData -> Int -> CandidatesLists ->
-  (Position, (Int, RotatedPiece)) -> [(Int, [Addition])]
+  MatchingData -> Cost -> CandidatesLists ->
+  (Position, (Cost, RotatedPiece)) -> [(Cost, [Addition])]
 choosingCandidate md oldCostBound cls (thisPos, (thisCost, thisRp)) =
   map augmentResult $
     searchCandidatesLists md newCostBound (map updateCandidatesList cls)
@@ -80,7 +80,7 @@ choosingCandidate md oldCostBound cls (thisPos, (thisCost, thisRp)) =
     cluster = addPiece (thisPos, thisRp) (emptyCluster md)
 
 bestMultiAddition ::
-  MatchingData -> Cluster -> Int -> [Position] -> Maybe [Addition]
+  MatchingData -> Cluster -> Cost -> [Position] -> Maybe [Addition]
 bestMultiAddition md c costBound poss =
   case bestMultiAdditions md c costBound poss of
     [] -> Nothing

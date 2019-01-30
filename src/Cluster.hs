@@ -1,5 +1,6 @@
 module Cluster
-  ( Position
+  ( Cost
+  , Position
   , RotatedPiece
   , Addition
   , Cluster
@@ -7,10 +8,15 @@ module Cluster
   , addPiece
   , onePieceCluster
   , showCluster
+  , positionInCluster
+  , getClusterPiece
+  , neighbouringPositions
   , unusedRotatedPieces
   , allPossibleAdditions
   , totalAdditionCost
   , avgAdditionCost
+  , multiAdditionCosts
+  , avgMultiAdditionCost
   ) where
 
 import MatchingData
@@ -68,6 +74,13 @@ showCluster c
     fourDigit = reverse . take 4 . (++repeat '0') . reverse . show
     ps = pieces c
 
+positionInCluster ::
+  Cluster -> Position -> Bool
+positionInCluster c pos =
+  case pieces c M.!? pos of
+    Nothing -> False
+    Just _ -> True
+
 getClusterPiece ::
   MatchingData -> Cluster -> Position -> Maybe Piece
 getClusterPiece md c pos =
@@ -91,7 +104,7 @@ allPossibleAdditions md c =
   , rp <- unusedRotatedPieces c ]
 
 clusterEdgeCost ::
-  MatchingData -> Cluster -> Position -> Direction -> Maybe Int
+  MatchingData -> Cluster -> Position -> Direction -> Maybe Cost
 clusterEdgeCost md c pos dir = matchingCost
   <$> (direction dir  <$> getClusterPiece md c pos )
   <*> (direction dir' <$> getClusterPiece md c pos')
@@ -99,16 +112,26 @@ clusterEdgeCost md c pos dir = matchingCost
     pos' = move dir pos
     dir' = oppositeDirection dir
 
-additionCosts :: MatchingData -> Cluster -> Addition -> [Int]
+additionCosts :: MatchingData -> Cluster -> Addition -> [Cost]
 additionCosts md c a@(pos, _) = catMaybes $
   [ clusterEdgeCost md c' pos dir | dir <- allDirections ]
   where
     c' = addPiece a c
 
-totalAdditionCost :: MatchingData -> Cluster -> Addition -> Int
+totalAdditionCost :: MatchingData -> Cluster -> Addition -> Cost
 totalAdditionCost md c a = sum (additionCosts md c a)
 
 avgAdditionCost :: MatchingData -> Cluster -> Addition -> Float
 avgAdditionCost md c a = avg (additionCosts md c a)
-  where
-    avg l = fromIntegral (sum l) / fromIntegral (length l)
+
+multiAdditionCosts :: MatchingData -> Cluster -> [Addition] -> [Cost]
+multiAdditionCosts md c [] = []
+multiAdditionCosts md c (a:as) =
+  additionCosts md c a ++
+  multiAdditionCosts md (addPiece a c) as
+
+avgMultiAdditionCost :: MatchingData -> Cluster -> [Addition] -> Float
+avgMultiAdditionCost md c as = avg (multiAdditionCosts md c as)
+
+avg :: [Cost] -> Cost
+avg l = (sum l) / fromIntegral (length l)

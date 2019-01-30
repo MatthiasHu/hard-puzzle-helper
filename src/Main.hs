@@ -1,7 +1,8 @@
 module Main where
 
-import Cluster
+import Grow
 import Matching
+import Cluster
 import EdgesFromImage
 import Piece
 import Rotation
@@ -32,28 +33,20 @@ main = do
   md <- loadPieces edgesPath imageNames
 --  printEdgeMatchingsStatistic md
 --  printBestEdgeMatchings md
-  let quadPositions = [(0, 0), (0, 1), (1, 0), (1, 1)]
-      threePositions = [(0, 1), (1, 0), (1, 1)]
-      twoPositions = [(0, 1), (1, 1)]
-      c0 = emptyCluster md
-      c1 = addPiece ((0, 0), (382, mkRotation 0)) c0
+  let c0 = emptyCluster md
       c2 = foldr addPiece c0
              [ ((0, 0), (382, mkRotation 0))
              , ((1, 0), (432, mkRotation 0)) ]
-      bound = 120
-      l = bestMultiAdditions md c1 bound threePositions
-  putStrLn $ concat ["searching multiadditions with total cost below ", show bound, "..."]
-  mapM_ print l
-  putStrLn $ concat ["found ", show (length l), " in total."]
-  putStrLn "best one:"
-  print (minimumBy (comparing fst) l)
+  showGrowth md c2
 
 showGrowth :: MatchingData -> Cluster -> IO ()
 showGrowth md c = do
   putStrLn ""
   putStrLn (showCluster c)
   putStrLn "----------"
-  showGrowth md (greedyGrowth md c)
+  showGrowth md (grow md avgCostBound c)
+  where
+    avgCostBound = 50^2
 
 allImagesToEdges :: FilePath -> FilePath -> IO [String]
 allImagesToEdges imagesPath edgesPath = do

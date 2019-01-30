@@ -1,10 +1,12 @@
 module MatchingData
-  ( PieceId
+  ( Cost
+  , PieceId
   , EdgeId
   , MatchingData
   , getPiece
   , getEdge
   , edgeMatchingCost
+  , rawEdgeMatchingCost
   , allEdgeMatchings
   ) where
 
@@ -27,8 +29,13 @@ getPiece md pieceId = md V.! pieceId
 getEdge :: MatchingData -> EdgeId -> Edge64
 getEdge md (pieceId, dir) = direction dir (getPiece md pieceId)
 
-edgeMatchingCost :: MatchingData -> (EdgeId, EdgeId) -> Int
-edgeMatchingCost md (a, b) = matchingCost (getEdge md a) (getEdge md b)
+edgeMatchingCost :: MatchingData -> (EdgeId, EdgeId) -> Cost
+edgeMatchingCost md (a, b) =
+  matchingCost (getEdge md a) (getEdge md b)
+
+rawEdgeMatchingCost :: MatchingData -> (EdgeId, EdgeId) -> Int
+rawEdgeMatchingCost md (a, b) =
+  rawMatchingCost (getEdge md a) (getEdge md b)
 
 allEdgeMatchings :: MatchingData -> [(EdgeId, EdgeId)]
 allEdgeMatchings md =
