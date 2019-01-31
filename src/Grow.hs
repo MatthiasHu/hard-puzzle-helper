@@ -1,5 +1,8 @@
 module Grow
-  ( grow
+  ( DecoratedCluster()
+  , decorateCluster
+  , undecorateCluster
+  , grow
   ) where
 
 import Matching
@@ -26,22 +29,58 @@ growLocations c = pairs ++ singles
     singleAllowed =
       (>=2) . length . filter (positionInCluster c) . neighbours
 
+data DecoratedCluster = DecoratedCluster
+  { undecorateCluster :: Cluster
+  , growthOptions     :: M.Map (S.Set Position) (Maybe [Addition])
+  }
 
--- TODO: grow faster using decorated clusters
-grow :: MatchingData -> Cost -> Cluster -> Cluster
-grow md avgCostBound c =
-  applyMultiAddition winner c
+decorateCluster :: MatchingData -> Cost -> Cluster -> DecoratedCluster
+decorateCluster md avgCostBound c =
+  completeDecoration md avgCostBound (DecoratedCluster c M.empty)
+
+completeDecoration ::
+  MatchingData -> Cost -> DecoratedCluster -> DecoratedCluster
+completeDecoration md avgCostBound (DecoratedCluster c options) =
+  DecoratedCluster c
+    (M.fromList [ (loc, findOption loc) | loc <- growLocations c ])
   where
-    winner = minimumBy (comparing (avgMultiAdditionCost md c)) mas
-    mas = mapMaybe mkMultiAddition (growLocations c)
-    mkMultiAddition poss =
+    findOption loc
+      | loc `M.member` options
+        = options M.! loc
+      | otherwise
+        = mkMultiAddition loc
+    mkMultiAddition loc =
       bestMultiAddition md c
-        (avgCostBound * fromIntegral (numberOfCosts poss))
-        (S.toList poss)
-    numberOfCosts poss = length
-      (multiAdditionCosts md c (map mkDummyAddition (S.toList poss)))
+        (avgCostBound * fromIntegral (numberOfCosts loc))
+        (S.toList loc)
+    numberOfCosts loc = length
+      (multiAdditionCosts md c (map mkDummyAddition (S.toList loc)))
     mkDummyAddition pos =
       (pos, (error "evaluating dummy addition", mkRotation 0))
 
-applyMultiAddition :: [Addition] -> Cluster -> Cluster
-applyMultiAddition ma c = foldl' (flip addPiece) c ma
+invalidatePositions ::
+  [Position] -> M.Map (S.Set Position) a -> M.Map (S.Set Position) a
+invalidatePositions innerBadPoss options =
+  M.filterWithKey (\l ma -> goodLocation l) options
+  where
+    allBadPoss = S.fromList
+      ( innerBadPoss
+        ++ concatMap neighbours innerBadPoss )
+    goodLocation l = S.null (l `S.intersection` allBadPoss)
+
+grow :: MatchingData -> Cost -> DecoratedCluster -> DecoratedCluster
+grow md avgCostBound dc =
+  applyMultiAddition md avgCostBound (snd winner) dc
+  where
+    winner = minimumBy (comparing fst) cmas
+    cmas = [ (avgMultiAdditionCost md (undecorateCluster dc) ma, ma)
+           | Just ma <- M.elems (growthOptions dc) ]
+
+applyMultiAddition ::
+  MatchingData -> Cost ->
+  [Addition] -> DecoratedCluster -> DecoratedCluster
+applyMultiAddition md avgCostBound ma (DecoratedCluster c options) =
+  completeDecoration md avgCostBound
+    ( DecoratedCluster
+        (foldl' (flip addPiece) c ma)
+        (invalidatePositions (map fst ma) options) )

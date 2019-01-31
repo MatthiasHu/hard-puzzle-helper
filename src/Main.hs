@@ -35,17 +35,18 @@ main = do
 --  printBestEdgeMatchings md
   let c0 = emptyCluster md
       c2 = foldr addPiece c0
-             [ ((0, 0), (382, mkRotation 0))
-             , ((1, 0), (432, mkRotation 0)) ]
+             [ ((0, 0), (500, mkRotation 0))
+             , ((1, 0), (505, mkRotation 0)) ]
   showGrowth md c2
 
 showGrowth :: MatchingData -> Cluster -> IO ()
-showGrowth md c = do
-  putStrLn ""
-  putStrLn (showClusterWithAvgCost md c)
-  putStrLn "----------"
-  showGrowth md (grow md avgCostBound c)
+showGrowth md c = go (decorateCluster md avgCostBound c)
   where
+    go dc = do
+      putStrLn ""
+      putStrLn (showClusterWithAvgCost md (undecorateCluster dc))
+      putStrLn "----------"
+      go (grow md avgCostBound dc)
     avgCostBound = 30
 
 allImagesToEdges :: FilePath -> FilePath -> IO [String]
