@@ -86,7 +86,8 @@ rawMatchingCost e1 e2 =
       | (r1, r2) <- zip (insideDown e1) (insideUp e2) ]
 
 matchingCost :: Edge64 -> Edge64 -> Cost
-matchingCost e1 e2 = (fromIntegral (rawMatchingCost e1 e2))^2
+matchingCost e1 e2 =
+  (0.1 * fromIntegral (rawMatchingCost e1 e2))^2
 
 -- (Retains mathematical coordinates: low y is bottom.)
 edge64Pixel :: Edge64 -> (Int, Int) -> Bool

@@ -28,7 +28,7 @@ growLocations c = pairs ++ singles
 
 
 -- TODO: grow faster using decorated clusters
-grow :: MatchingData -> Float -> Cluster -> Cluster
+grow :: MatchingData -> Cost -> Cluster -> Cluster
 grow md avgCostBound c =
   applyMultiAddition winner c
   where

@@ -42,11 +42,11 @@ main = do
 showGrowth :: MatchingData -> Cluster -> IO ()
 showGrowth md c = do
   putStrLn ""
-  putStrLn (showCluster c)
+  putStrLn (showClusterWithAvgCost md c)
   putStrLn "----------"
   showGrowth md (grow md avgCostBound c)
   where
-    avgCostBound = 50^2
+    avgCostBound = 30
 
 allImagesToEdges :: FilePath -> FilePath -> IO [String]
 allImagesToEdges imagesPath edgesPath = do

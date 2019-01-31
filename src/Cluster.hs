@@ -8,6 +8,7 @@ module Cluster
   , addPiece
   , onePieceCluster
   , showCluster
+  , showClusterWithAvgCost
   , positionInCluster
   , getClusterPiece
   , neighbouringPositions
@@ -61,9 +62,9 @@ showCluster :: Cluster -> String
 showCluster c
   | M.null ps  = "(empty cluster)"
   | otherwise  = unlines . intersperse "" $
-    [ unwords [ maybe "    " (fourDigit . fst) (ps M.!? (x, y))
-              | x <- [x0..x1] ]
-    | y <- [y0..y1] ]
+    [ unwords [ maybe " .. " (fourDigit . fst) (ps M.!? (x, y))
+              | x <- [x0-1..x1+1] ]
+    | y <- [y0-1..y1+1] ]
   where
     x0 = minimum xs
     x1 = maximum xs
@@ -73,6 +74,11 @@ showCluster c
     ys = map snd (M.keys ps)
     fourDigit = reverse . take 4 . (++repeat '0') . reverse . show
     ps = pieces c
+
+showClusterWithAvgCost :: MatchingData -> Cluster -> String
+showClusterWithAvgCost md c = unlines
+  [ showCluster c
+  , concat ["(", show (clusterAvgCost md c), ")"] ]
 
 positionInCluster ::
   Cluster -> Position -> Bool
@@ -121,7 +127,7 @@ additionCosts md c a@(pos, _) = catMaybes $
 totalAdditionCost :: MatchingData -> Cluster -> Addition -> Cost
 totalAdditionCost md c a = sum (additionCosts md c a)
 
-avgAdditionCost :: MatchingData -> Cluster -> Addition -> Float
+avgAdditionCost :: MatchingData -> Cluster -> Addition -> Cost
 avgAdditionCost md c a = avg (additionCosts md c a)
 
 multiAdditionCosts :: MatchingData -> Cluster -> [Addition] -> [Cost]
@@ -130,8 +136,17 @@ multiAdditionCosts md c (a:as) =
   additionCosts md c a ++
   multiAdditionCosts md (addPiece a c) as
 
-avgMultiAdditionCost :: MatchingData -> Cluster -> [Addition] -> Float
+avgMultiAdditionCost :: MatchingData -> Cluster -> [Addition] -> Cost
 avgMultiAdditionCost md c as = avg (multiAdditionCosts md c as)
 
 avg :: [Cost] -> Cost
 avg l = (sum l) / fromIntegral (length l)
+
+clusterCosts :: MatchingData -> Cluster -> [Cost]
+clusterCosts md c = catMaybes
+  [ clusterEdgeCost md c pos dir
+  | pos <- M.keys (pieces c)
+  , dir <- [East, North] ]
+
+clusterAvgCost :: MatchingData -> Cluster -> Cost
+clusterAvgCost md c = avg (clusterCosts md c)
