@@ -84,4 +84,4 @@ bestMultiAddition ::
 bestMultiAddition md c costBound poss =
   case bestMultiAdditions md c costBound poss of
     [] -> Nothing
-    l -> Just (snd $ maximumBy (comparing fst) l)
+    l -> Just (snd $ minimumBy (comparing fst) l)
