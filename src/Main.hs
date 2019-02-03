@@ -3,6 +3,7 @@ module Main where
 import Grow
 import Matching
 import Cluster
+import MatchingData
 import EdgesFromImage
 import Piece
 import Rotation
@@ -13,6 +14,7 @@ import SquareGrid
 import Codec.Picture
 import System.FilePath
 import System.Directory
+import System.IO
 import Data.Binary
 import qualified Data.Set as Set
 import qualified Data.Vector as V
@@ -35,8 +37,8 @@ main = do
 --  printBestEdgeMatchings md
   let c0 = emptyCluster md
       c2 = foldr addPiece c0
-             [ ((0, 0), (500, mkRotation 0))
-             , ((1, 0), (505, mkRotation 0)) ]
+             [ ((0, 0), (504, mkRotation 0))
+             , ((1, 0), (506, mkRotation 0)) ]
   showGrowth md c2
 
 showGrowth :: MatchingData -> Cluster -> IO ()
@@ -46,8 +48,9 @@ showGrowth md c = go (decorateCluster md avgCostBound c)
       putStrLn ""
       putStrLn (showClusterWithAvgCost md (undecorateCluster dc))
       putStrLn "----------"
+      hFlush stdout
       go (grow md avgCostBound dc)
-    avgCostBound = 30
+    avgCostBound = 40
 
 allImagesToEdges :: FilePath -> FilePath -> IO [String]
 allImagesToEdges imagesPath edgesPath = do
@@ -69,7 +72,7 @@ printEdgeMatchingsStatistic md = do
     (edgeMatchingsStatistic md 20)
   where
     c = ((n*n*8) `div` 1000) + 1
-    n = length md
+    n = numberOfPieces md
 
 printBestEdgeMatchings :: MatchingData -> IO ()
 printBestEdgeMatchings matchingData = do
@@ -101,7 +104,8 @@ edgeFilesPresent edgesPath baseName = all (==True) <$>
 loadPieces :: FilePath -> [String] -> IO MatchingData
 loadPieces edgesPath imageNames = do
   putStrLn $ unwords ["loading pieces from", edgesPath, "..."]
-  V.fromList <$> mapM (loadPiece edgesPath . takeBaseName) imageNames
+  matchingDataFromPieces . V.fromList
+    <$> mapM (loadPiece edgesPath . takeBaseName) imageNames
 
 loadPiece :: FilePath -> String -> IO Piece
 loadPiece edgesPath imageBaseName = sequence $

@@ -1,6 +1,7 @@
 module Directions
   ( Direction(..)
   , allDirections
+  , directionIndex
   , oppositeDirection
   , move
   , Directions(..)
@@ -12,9 +13,13 @@ import Control.Applicative
 
 
 data Direction = East | North | West | South
-  deriving (Show)
+  deriving (Show, Enum, Bounded)
 
-allDirections = [East, North, West, South]
+allDirections :: [Direction]
+allDirections = [minBound .. maxBound]
+
+directionIndex :: Direction -> Int
+directionIndex = fromEnum
 
 oppositeDirection :: Direction -> Direction
 oppositeDirection East  = West

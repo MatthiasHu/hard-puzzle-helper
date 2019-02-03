@@ -12,15 +12,14 @@ import Cluster
 import MatchingData
 import Statistic
 
-import qualified Data.Vector as V
 import Data.List
 import Data.Ord
 
 
-edgeMatchingsStatistic :: MatchingData -> Int -> [Position]
+edgeMatchingsStatistic :: MatchingData -> Int -> [(Int, Int)]
 edgeMatchingsStatistic md step =
     statistic
-  . map ((*step) . (`div` step) . rawEdgeMatchingCost md)
+  . map ((*step) . (`div` step) . fromIntegral . rawEdgeMatchingCost md)
   $ allEdgeMatchings md
 
 bestEdgeMatchings :: MatchingData -> [(EdgeId, EdgeId)]

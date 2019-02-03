@@ -4,6 +4,7 @@ module Edge
   , edgeFromSet
   , Cost
   , rawMatchingCost
+  , rawCostToCost
   , matchingCost
   , edge64Pixel
   ) where
@@ -80,14 +81,17 @@ edgeFromSet insideSet (x1, y1) (x2, y2) = generateEdge64 f
 
 type Cost = Float
 
-rawMatchingCost :: Edge64 -> Edge64 -> Int
+rawMatchingCost :: Edge64 -> Edge64 -> Word16
 rawMatchingCost e1 e2 =
-  sum [ popCount . complement $ xor r1 r2
-      | (r1, r2) <- zip (insideDown e1) (insideUp e2) ]
+  fromIntegral . sum $
+    [ popCount . complement $ xor r1 r2
+    | (r1, r2) <- zip (insideDown e1) (insideUp e2) ]
+
+rawCostToCost :: Word16 -> Cost
+rawCostToCost x = (0.1 * fromIntegral x)^2
 
 matchingCost :: Edge64 -> Edge64 -> Cost
-matchingCost e1 e2 =
-  (0.1 * fromIntegral (rawMatchingCost e1 e2))^2
+matchingCost e1 e2 = rawCostToCost (rawMatchingCost e1 e2)
 
 -- (Retains mathematical coordinates: low y is bottom.)
 edge64Pixel :: Edge64 -> (Int, Int) -> Bool

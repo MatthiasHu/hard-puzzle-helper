@@ -43,7 +43,10 @@ data Cluster = Cluster
   }
 
 emptyCluster :: MatchingData -> Cluster
-emptyCluster md = Cluster M.empty (S.fromList [0..length md -1])
+emptyCluster md = Cluster M.empty (S.fromList [0..numberOfPieces md -1])
+
+clusterSize :: Cluster -> Int
+clusterSize c = M.size (pieces c)
 
 addPiece :: Addition -> Cluster -> Cluster
 addPiece (pos, rp@(p, _)) c
@@ -78,7 +81,8 @@ showCluster c
 showClusterWithAvgCost :: MatchingData -> Cluster -> String
 showClusterWithAvgCost md c = unlines
   [ showCluster c
-  , concat ["(", show (clusterAvgCost md c), ")"] ]
+  , concat ["(", show (clusterSize c), " pieces, avg edge cost "
+  , show (clusterAvgCost md c), ")"] ]
 
 positionInCluster ::
   Cluster -> Position -> Bool
@@ -111,12 +115,13 @@ allPossibleAdditions md c =
 
 clusterEdgeCost ::
   MatchingData -> Cluster -> Position -> Direction -> Maybe Cost
-clusterEdgeCost md c pos dir = matchingCost
-  <$> (direction dir  <$> getClusterPiece md c pos )
-  <*> (direction dir' <$> getClusterPiece md c pos')
+clusterEdgeCost md c pos dir = curry (edgeMatchingCost md)
+  <$> (edgeOfRP dir  <$> (pieces c M.!? pos ))
+  <*> (edgeOfRP dir' <$> (pieces c M.!? pos'))
   where
     pos' = move dir pos
     dir' = oppositeDirection dir
+    edgeOfRP d (p, r) = (p, rotateDir (invertRotation r) d)
 
 additionCosts :: MatchingData -> Cluster -> Addition -> [Cost]
 additionCosts md c a@(pos, _) = catMaybes $
